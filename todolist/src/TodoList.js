@@ -1,72 +1,125 @@
 import React, { Component } from 'react';
-import ItemList from './Item.js';
+import ItemList from "./ItemList"
+import { Button } from '@material-ui/core';
+import TextField from '@material-ui/core/TextField';
+
+import "./TodoList.css"
+
 
 class TodoList extends Component{
+    
+    constructor(props){
+        super(props);
+        let todo_tasks = [];
+        this.state = {
+            itemsState : todo_tasks
+        };
+        this.lastID = 0;
+        
+        this.addItem = this.addItem.bind(this);
+        this.removeItem = this.removeItem.bind(this);
 
+        fetch("//192.168.1.5:8080/get_items").then((response)=>{
+            
+            response.json().then((data) =>{
 
+               data.forEach(item =>{
+                   console.log(item);
+                   this.state.itemsState.push({
+                       id: item.id,
+                       item_name: item.item_name
+                   })
+               })
 
- constructor (props) {
- 
-		super(props);
+            this.setState({
+                itemsState: this.state.itemsState
+            });
 
-	 	this.state = {
-			items : []
-		};
-	 	this.last_id = 0;
-		
-		this.addItem = this.addItem.bind(this);
-		this.removeItem = this.removeItem.bind(this);
+            this.lastID = data[data.length - 1].id;
+        });
+        })
+    }
+    
+    removeItem(id_item){
+        
 
-	}
-	
-	addItem (e) {
-		e.preventDefault();
+        console.log("Borrado " + id_item);
 
-	 	let text_v = document.getElementById("text-task").value;
-		
-		this.state.items.push({id:this.last_id, item:text_v});
+         for(let i = 0; i< this.state.itemsState.length; i++){
 
-		this.last_id++;
+             if(this.state.itemsState[i].id === id_item){
 
-		this.setState({
-			items: this.state.items
-		});
-	}
+                let itemToDelete = this.state.itemsState[i];
+                
+                 fetch("//192.168.1.5:8080/remove",{
+                method: "POST",
+                headers:{
+                    'Content-type' : "text/json"
+                },
+                body: JSON.stringify(itemToDelete)
+                })
 
-	removeItem (id_item) {
-		console.log("Remove del parent "+id_item);
-		for(let i=0; i<this.state.items.length; i++){
-						if(this.state.items[i].id === id_item){
-						this.state.items.splice(i, 1);
-						break;
-						}
-			}
+                 this.state.itemsState.splice(i,1);
+                 break;
+             }
+         }
 
-			this.setState({
-				items: this.state.items
-			});
-	}
-	render(){
+         this.setState({
+             itemsState:this.state.itemsState
+         });
+    }
+    
+    addItem(e){
+        e.preventDefault();
+        
+        this.lastID++;
+        let textValue = document.getElementById("text").value;
+        
+        if(textValue !== ""){
+            this.state.itemsState.push({id:this.lastID,item_name:textValue});
+            this.setState({
+                itemsState: this.state.itemsState
+            });
+            
+            console.log(textValue);
+            fetch("//192.168.1.5:8080/submit",{
+                method: "POST",
+                headers:{
+                    'Content-type' : "text/json"
+                },
+                body: JSON.stringify({
+                    id: this.lastID,
+                    item_name:textValue
+                })
+            });
+            document.getElementById("text").value ="";
+            document.getElementById("text").focus();
+        }
+    }
+    render(){
+        
+        let lista = this.state.itemsState.map((todoItem) => {
+            return (<ItemList item={todoItem.item_name} 
+                id_item={todoItem.id}
+                parentRemove={this.removeItem}/>)
+        });
 
-		let lista = this.state.items.map((todo_item) => {
-			return (<ItemList item={todo_item.item} 
-							parentRemove={this.removeItem} 
-							id_item={todo_item.id}/>);
-		});
-
-		return (
-		<div className = "todoList">
-			<h1>TODO LIST WITH CSS</h1>
-			<ul>
-				{lista}
-			</ul>
-			<form onSubmit={this.addItem}>
-				<p><input type="text" id="text-task"/></p>
-				<p><button type="submit">Añadir</button></p>
-			</form>
-		</div>
-		);
-	}
+        return(
+            <div className="Lista">
+                <h1>LA LISTICA</h1>
+                <div className="Contenido">
+                    <form onSubmit={this.addItem}>
+                        <p><TextField label="Nueva tarea" color="secondary" size="medium" id="standard-full-width" autoComplete="off" margin="normal" variant="outlined" type="text" id="text"/></p>
+												
+                        <p><Button variant="contained" color="secondary" type="Submit" aria-label="add" > AÑADIR </Button></p>
+                    </form>
+                    <ul id="doList">
+                        {lista}
+                    </ul>
+                </div>
+            </div>
+        )         
+    }
 }
 
 export default TodoList;
